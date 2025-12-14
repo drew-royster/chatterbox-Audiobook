@@ -144,8 +144,8 @@ def generate(model, text, audio_prompt_path, exaggeration, temperature, seed_num
     sample_rate = getattr(model, "sr", 24000) if model else 24000
     total_pauses_added = 0
     
-    # Prepare conditionals from audio prompt
-    conds = model.prepare_conditionals(audio_prompt_path, exaggeration)
+    # Prepare conditionals from audio prompt (stored internally on the model)
+    model.prepare_conditionals(audio_prompt_path, exaggeration)
     
     for segment in segments:
         if not segment:
@@ -162,16 +162,15 @@ def generate(model, text, audio_prompt_path, exaggeration, temperature, seed_num
                 print(f"🔇 Adding {pause_duration:.1f}s pause ({num_breaks} returns)")
         else:
             # This is actual text - generate audio
-            text_segment = segment.strip()
-            if text_segment:
-                wav = model.generate(
-                    text_segment,
-                    conds,
-                    exaggeration=exaggeration,
-                    temperature=temperature,
-                    cfg_weight=cfgw,
-                    min_p=min_p,
-                    top_p=top_p,
+                text_segment = segment.strip()
+                if text_segment:
+                    wav = model.generate(
+                        text_segment,
+                        exaggeration=exaggeration,
+                        temperature=temperature,
+                        cfg_weight=cfgw,
+                        min_p=min_p,
+                        top_p=top_p,
                     repetition_penalty=repetition_penalty,
                 )
                 audio_np = wav.squeeze(0).numpy()
@@ -187,7 +186,6 @@ def generate(model, text, audio_prompt_path, exaggeration, temperature, seed_num
         # Fallback to original behavior if no segments
         wav = model.generate(
             text,
-            conds,
             exaggeration=exaggeration,
             temperature=temperature,
             cfg_weight=cfgw,
@@ -214,7 +212,7 @@ def generate_with_cpu_fallback(model, text, audio_prompt_path, exaggeration, tem
         total_pauses_added = 0
         
         # Prepare conditionals from audio prompt
-        conds = generation_model.prepare_conditionals(audio_prompt_path, exaggeration)
+        generation_model.prepare_conditionals(audio_prompt_path, exaggeration)
         
         for segment in segments:
             if not segment:
@@ -235,7 +233,6 @@ def generate_with_cpu_fallback(model, text, audio_prompt_path, exaggeration, tem
                 if text_segment:
                     wav = generation_model.generate(
                         text_segment,
-                        conds,
                         exaggeration=exaggeration,
                         temperature=temperature,
                         cfg_weight=cfg_weight,
@@ -256,7 +253,6 @@ def generate_with_cpu_fallback(model, text, audio_prompt_path, exaggeration, tem
             # Fallback to original behavior if no segments
             wav = generation_model.generate(
                 text,
-                conds,
                 exaggeration=exaggeration,
                 temperature=temperature,
                 cfg_weight=cfg_weight,
@@ -659,11 +655,10 @@ def generate_with_retry(model, text, audio_prompt_path, exaggeration, temperatur
             
             try:
                 # Prepare conditionals from audio prompt
-                conds = model.prepare_conditionals(audio_prompt_path, exaggeration)
+                model.prepare_conditionals(audio_prompt_path, exaggeration)
                 
                 wav = model.generate(
                     text,
-                    conds,
                     exaggeration=exaggeration,
                     temperature=temperature,
                     cfg_weight=cfg_weight,
@@ -1366,11 +1361,10 @@ def create_multi_voice_audiobook(model, text_content, voice_library_path, projec
             
             # Generate audio for this chunk
             # Prepare conditionals from audio prompt
-            conds = model.prepare_conditionals(voice_config['audio_file'], voice_config['exaggeration'])
+            model.prepare_conditionals(voice_config['audio_file'], voice_config['exaggeration'])
             
             wav = model.generate(
                 chunk_text,
-                conds,
                 exaggeration=voice_config['exaggeration'],
                 temperature=voice_config['temperature'],
                 cfg_weight=voice_config['cfg_weight'],
@@ -1773,10 +1767,10 @@ def create_multi_voice_audiobook_with_assignments(
                 chunk_text = cleaned_text
                 
                 # Prepare conditionals from audio prompt
-                conds = processing_model.prepare_conditionals(voice_config['audio_file'], voice_config['exaggeration'])
+                processing_model.prepare_conditionals(voice_config['audio_file'], voice_config['exaggeration'])
                 
                 wav = processing_model.generate(
-                    chunk_text, conds,
+                    chunk_text,
                     exaggeration=voice_config['exaggeration'], temperature=voice_config['temperature'],
                     cfg_weight=voice_config['cfg_weight'])
                 audio_np = wav.squeeze(0).cpu().numpy()
